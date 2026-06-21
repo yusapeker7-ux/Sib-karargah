@@ -132,7 +132,7 @@
     </form>
   </main>
 
-  <script src="https://unpkg.com/peerjs@1/dist/peerjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js"></script>
   <script>
     var PREFIX = 'anonimsohbet-';
     var ICE = { iceServers: [
@@ -258,6 +258,11 @@
 
     // Oda oluştur (host)
     document.getElementById('createBtn').addEventListener('click', function () {
+      if (typeof Peer === 'undefined') {
+        showScreen('status');
+        setStatus('Bağlantı kütüphanesi yüklenemedi. Sayfayı yenile ve tekrar dene.', false);
+        return;
+      }
       var code = generateCode();
       teardownPeer();
       showScreen('status');
@@ -265,15 +270,23 @@
 
       peer = new Peer(PREFIX + code, { debug: 1, config: ICE });
 
-      peer.on('open', function () { setStatus('Karşı taraf bekleniyor', true); });
+      var openTimer = setTimeout(function () {
+        setStatus('Bağlantı sunucusuna ulaşılamıyor. İnternetini kontrol et ve tekrar dene.', false);
+      }, 10000);
+
+      peer.on('open', function () {
+        clearTimeout(openTimer);
+        setStatus('Karşı taraf bekleniyor', true);
+      });
       peer.on('connection', function (connection) { wireConnection(connection, code); });
       peer.on('error', function (err) {
+        clearTimeout(openTimer);
         if (err && err.type === 'unavailable-id') {
           setStatus('Kod meşgul, yeni kod deneniyor...', false);
           teardownPeer();
           setTimeout(function () { document.getElementById('createBtn').click(); }, 400);
         } else {
-          setStatus('Bağlantı kurulamadı. Vazgeç ve tekrar dene.', false);
+          setStatus('Bağlantı kurulamadı (' + (err && err.type ? err.type : 'hata') + '). Vazgeç ve tekrar dene.', false);
         }
       });
     });
@@ -288,6 +301,7 @@
       e.preventDefault();
       var raw = document.getElementById('joinInput').value.trim().toUpperCase();
       if (raw.length < 4) { showError('Kod en az 4 karakter olmalı.'); return; }
+      if (typeof Peer === 'undefined') { showError('Bağlantı kütüphanesi yüklenemedi. Sayfayı yenile.'); return; }
       document.getElementById('landingError').hidden = true;
 
       teardownPeer();
@@ -296,7 +310,12 @@
 
       peer = new Peer(undefined, { debug: 1, config: ICE });
 
+      var peerOpenTimer = setTimeout(function () {
+        setStatus('Bağlantı sunucusuna ulaşılamıyor. İnternetini kontrol et ve tekrar dene.', false);
+      }, 10000);
+
       peer.on('open', function () {
+        clearTimeout(peerOpenTimer);
         var connection = peer.connect(PREFIX + raw, { reliable: true });
         var settled = false;
 
@@ -313,7 +332,10 @@
         });
       });
 
-      peer.on('error', function () { setStatus('Bağlantı kurulamadı. Vazgeç ve tekrar dene.', false); });
+      peer.on('error', function (err) {
+        clearTimeout(peerOpenTimer);
+        setStatus('Bağlantı kurulamadı (' + (err && err.type ? err.type : 'hata') + '). Vazgeç ve tekrar dene.', false);
+      });
     });
 
     // Mesaj gönder
