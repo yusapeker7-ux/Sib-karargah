@@ -1,355 +1,474 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<meta name="theme-color" content="#14130f" />
-<title>Anonim Mesaj</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GHOSTLINE // anonim kanal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #14130f;
-    --surface: #1e1c17;
-    --surface-2: #262319;
-    --text: #ede8dd;
-    --text-muted: #8c8576;
-    --accent: #c97a3d;
-    --border: #3a372e;
+:root{
+  --bg:#050609;
+  --panel:#0a0e16;
+  --panel-soft:#0e1422;
+  --signal:#2f8fff;
+  --signal-dim:#155299;
+  --you:#ffffff;
+  --you-dim:#9aa7b8;
+  --alert:#ff2d2d;
+  --muted:#5b6b80;
+  --border:#152233;
+  --danger:#ff5252;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  background:var(--bg);
+  color:var(--signal);
+  font-family:'Share Tech Mono', monospace;
+  overflow:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+.hero-font{font-family:'VT323', monospace;}
+
+/* ---------- ambient layers ---------- */
+#matrixCanvas{
+  position:fixed; inset:0; width:100%; height:100%;
+  opacity:.16; z-index:0; pointer-events:none;
+}
+#scanlines{
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:repeating-linear-gradient(
+    to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px,
+    rgba(120,170,255,0.03) 3px, rgba(0,0,0,0) 4px
+  );
+  mix-blend-mode:screen;
+}
+#vignette{
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.65) 100%);
+}
+@keyframes flicker{
+  0%,100%{opacity:1;} 50%{opacity:.985;} 52%{opacity:1;}
+}
+.screen-flicker{animation:flicker 6s infinite;}
+@media (prefers-reduced-motion: reduce){
+  .screen-flicker{animation:none;}
+  #matrixCanvas{display:none;}
+}
+
+/* ---------- layout shells ---------- */
+.app{position:relative; z-index:2; height:100%; width:100%;}
+.center-stage{
+  height:100%; width:100%; display:flex; align-items:center; justify-content:center;
+  padding:20px;
+}
+.hidden{display:none !important;}
+
+/* ---------- login terminal ---------- */
+.terminal-card{
+  width:100%; max-width:440px;
+  background:linear-gradient(180deg, var(--panel), #060912);
+  border:1px solid var(--border);
+  border-radius:10px;
+  box-shadow:0 0 0 1px rgba(47,143,255,0.08), 0 0 40px rgba(47,143,255,0.08), 0 20px 60px rgba(0,0,0,0.6);
+  padding:26px 22px 28px;
+}
+.term-bar{display:flex; gap:7px; margin-bottom:18px;}
+.term-dot{width:10px; height:10px; border-radius:50%;}
+.term-dot.r{background:#ff5f56;} .term-dot.y{background:#ffbd2e;} .term-dot.g{background:#2f8fff;}
+.glitch-title{
+  font-family:'VT323', monospace;
+  font-size:clamp(34px,9vw,46px);
+  letter-spacing:2px;
+  color:var(--signal);
+  text-shadow:0 0 6px var(--signal), 0 0 18px rgba(47,143,255,0.5), 2px 0 var(--alert), -2px 0 var(--you);
+  margin:0 0 4px;
+}
+.subtitle{color:var(--muted); font-size:13px; margin-bottom:22px; line-height:1.5;}
+.field-label{font-size:12px; color:var(--signal-dim); display:block; margin-bottom:6px; letter-spacing:1px;}
+.field{margin-bottom:16px;}
+input[type=text]{
+  width:100%; background:#060912; border:1px solid var(--border); color:var(--signal);
+  font-family:'Share Tech Mono', monospace; font-size:16px; padding:12px 12px;
+  border-radius:6px; outline:none; letter-spacing:1px;
+}
+input[type=text]:focus{border-color:var(--signal); box-shadow:0 0 0 2px rgba(47,143,255,0.25);}
+input[type=text]::placeholder{color:#2c3c52;}
+.row{display:flex; gap:10px;}
+.btn{
+  font-family:'Share Tech Mono', monospace; cursor:pointer; border-radius:6px;
+  border:1px solid var(--signal); background:rgba(47,143,255,0.07); color:var(--signal);
+  padding:11px 14px; font-size:13px; letter-spacing:1px; text-align:center;
+  transition:transform .12s, box-shadow .12s, background .12s;
+  user-select:none;
+}
+.btn:hover{background:rgba(47,143,255,0.18); box-shadow:0 0 14px rgba(47,143,255,0.35);}
+.btn:active{transform:scale(.97);}
+.btn.primary{flex:1;}
+.btn.ghost{background:transparent; border-color:var(--border); color:var(--muted);}
+.btn.ghost:hover{border-color:var(--signal-dim); color:var(--signal);}
+.btn.you{border-color:var(--you); color:var(--you); background:rgba(255,255,255,0.05);}
+.btn.you:hover{background:rgba(255,255,255,0.16); box-shadow:0 0 14px rgba(255,255,255,0.3);}
+.btn.danger{border-color:var(--danger); color:var(--danger); background:rgba(255,82,82,0.07);}
+.btn.active{background:var(--signal); color:#04070d; box-shadow:0 0 16px rgba(47,143,255,0.55);}
+.btn.you.active{background:var(--you); color:#04070d; box-shadow:0 0 16px rgba(255,255,255,0.5);}
+.login-error{color:var(--danger); font-size:12px; min-height:16px; margin-top:6px;}
+.code-pill{
+  font-family:'VT323'; font-size:22px; letter-spacing:4px; color:var(--you);
+  background:#060912; border:1px solid var(--you-dim); border-radius:6px;
+  padding:4px 10px; cursor:pointer;
+}
+
+/* ---------- chat shell ---------- */
+.chat-shell{
+  height:100%; width:100%; display:grid;
+  grid-template-columns:210px 1fr;
+  grid-template-rows:56px 1fr auto;
+  grid-template-areas:
+    "header header"
+    "roster main"
+    "roster inputbar";
+}
+.header{
+  grid-area:header; display:flex; align-items:center; gap:12px;
+  padding:0 14px; border-bottom:1px solid var(--border); background:rgba(8,12,18,0.85);
+  backdrop-filter:blur(4px);
+}
+.header .title{font-family:'VT323'; font-size:22px; color:var(--signal); letter-spacing:1px; white-space:nowrap;}
+.header .spacer{flex:1;}
+.online-count{font-size:11px; color:var(--muted);}
+.roster{
+  grid-area:roster; border-right:1px solid var(--border); background:rgba(8,12,18,0.55);
+  padding:12px 10px; overflow-y:auto;
+}
+.roster h4{font-size:11px; color:var(--muted); letter-spacing:1px; margin:0 0 10px; font-weight:normal;}
+.peer-chip{
+  display:flex; align-items:center; gap:8px; padding:8px 8px; border-radius:6px; margin-bottom:6px;
+  background:var(--panel-soft); border:1px solid var(--border); font-size:12px; color:var(--signal);
+}
+.peer-chip .dot{width:7px; height:7px; border-radius:50%; background:var(--signal); box-shadow:0 0 6px var(--signal); flex-shrink:0;}
+.peer-chip.me{border-color:var(--you-dim); color:var(--you);}
+.peer-chip.me .dot{background:var(--you); box-shadow:0 0 6px var(--you);}
+.peer-chip .voice-ic{margin-left:auto; opacity:.7; font-size:11px;}
+
+.main{
+  grid-area:main; overflow-y:auto; padding:16px 16px 6px; display:flex; flex-direction:column; gap:10px;
+}
+.live-strip{display:flex; gap:8px; overflow-x:auto; padding-bottom:6px;}
+.live-tile{
+  position:relative; width:160px; height:96px; flex-shrink:0; border-radius:8px; overflow:hidden;
+  border:1px solid var(--alert); box-shadow:0 0 14px rgba(255,45,45,0.35); background:#000; cursor:pointer;
+}
+.live-tile video{width:100%; height:100%; object-fit:cover; display:block;}
+.live-tile .tag{
+  position:absolute; bottom:0; left:0; right:0; font-size:10px; background:rgba(0,0,0,0.65);
+  color:var(--alert); padding:3px 6px; letter-spacing:.5px;
+}
+.msg-row{display:flex; flex-direction:column; max-width:78%;}
+.msg-row.own{align-self:flex-end; align-items:flex-end;}
+.msg-row.other{align-self:flex-start; align-items:flex-start;}
+.msg-row.system{align-self:center; max-width:90%;}
+.msg-meta{font-size:10px; color:var(--muted); margin-bottom:3px; letter-spacing:.5px;}
+.bubble{
+  border-radius:8px; padding:9px 12px; font-size:14px; line-height:1.45; word-break:break-word;
+  white-space:pre-wrap; position:relative;
+}
+.msg-row.own .bubble{background:rgba(255,255,255,0.06); border:1px solid var(--you-dim); color:var(--you);}
+.msg-row.other .bubble{background:rgba(47,143,255,0.08); border:1px solid var(--border); color:var(--signal);}
+.msg-row.system .bubble{
+  background:transparent; border:none; color:var(--muted); font-size:11px; text-align:center; font-style:italic;
+}
+.bubble.emoji-only{background:transparent; border:none; font-size:34px; padding:0;}
+.bubble img.file-thumb{max-width:220px; max-height:200px; border-radius:6px; display:block; margin-top:2px; cursor:pointer;}
+.bubble .file-chip{
+  display:flex; align-items:center; gap:8px; background:#060912; border:1px solid var(--border);
+  border-radius:6px; padding:8px 10px; margin-top:2px; font-size:12px;
+}
+.bubble .file-chip a{color:var(--you); text-decoration:none;}
+.reaction-row{display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;}
+.reaction-pill{
+  font-size:12px; background:var(--panel-soft); border:1px solid var(--border); border-radius:10px;
+  padding:1px 7px; cursor:default;
+}
+.react-btn{
+  font-size:11px; color:var(--muted); background:none; border:none; cursor:pointer; margin-top:2px;
+  opacity:0; transition:opacity .15s;
+}
+.msg-row:hover .react-btn{opacity:.8;}
+.mini-emoji-pop{
+  display:flex; gap:4px; background:var(--panel); border:1px solid var(--border); border-radius:8px;
+  padding:5px; position:absolute; bottom:100%; margin-bottom:4px; z-index:5;
+}
+.mini-emoji-pop span{cursor:pointer; font-size:16px;}
+
+.inputbar{
+  grid-area:inputbar; border-top:1px solid var(--border); background:rgba(8,12,18,0.9);
+  padding:10px 12px; display:flex; flex-direction:column; gap:8px;
+  padding-bottom:calc(10px + env(safe-area-inset-bottom));
+}
+.control-deck{display:flex; gap:8px; flex-wrap:wrap;}
+.control-deck .btn{font-size:12px; padding:8px 11px;}
+.compose{display:flex; gap:8px; align-items:flex-end; position:relative;}
+.compose textarea{
+  flex:1; resize:none; max-height:90px; min-height:42px; background:#060912; border:1px solid var(--border);
+  color:var(--signal); border-radius:6px; padding:10px 12px; font-family:'Share Tech Mono'; font-size:14px;
+  outline:none; line-height:1.4;
+}
+.compose textarea:focus{border-color:var(--signal); box-shadow:0 0 0 2px rgba(47,143,255,0.2);}
+.icon-btn{
+  width:42px; height:42px; flex-shrink:0; border-radius:6px; border:1px solid var(--border); background:var(--panel-soft);
+  color:var(--signal); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.icon-btn:hover{border-color:var(--signal);}
+.send-btn{
+  width:42px; height:42px; flex-shrink:0; border-radius:6px; border:1px solid var(--signal); background:rgba(47,143,255,0.14);
+  color:var(--signal); font-size:16px; cursor:pointer;
+}
+.emoji-panel{
+  position:absolute; bottom:50px; left:0; background:var(--panel); border:1px solid var(--border); border-radius:8px;
+  padding:8px; display:grid; grid-template-columns:repeat(8,1fr); gap:4px; box-shadow:0 8px 24px rgba(0,0,0,0.6);
+}
+.emoji-panel span{font-size:19px; cursor:pointer; text-align:center; padding:3px; border-radius:5px;}
+.emoji-panel span:hover{background:rgba(47,143,255,0.14);}
+
+/* fullscreen viewer for live screen share */
+.viewer-overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:50; display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:10px;
+}
+.viewer-overlay video{max-width:94%; max-height:80%; border:1px solid var(--alert); border-radius:6px; box-shadow:0 0 30px rgba(255,45,45,0.4);}
+.viewer-overlay .close-viewer{color:var(--muted); font-size:13px; cursor:pointer;}
+
+/* ---------- responsive ---------- */
+@media (max-width:760px){
+  .chat-shell{
+    grid-template-columns:1fr;
+    grid-template-rows:56px 64px 1fr auto;
+    grid-template-areas:
+      "header"
+      "roster"
+      "main"
+      "inputbar";
   }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'IBM Plex Sans', system-ui, sans-serif;
-    min-height: 100dvh;
+  .roster{
+    display:flex; flex-direction:row; gap:6px; overflow-x:auto; overflow-y:hidden;
+    border-right:none; border-bottom:1px solid var(--border); align-items:center; padding:8px 10px;
   }
-  button, input { font: inherit; }
-
-  /* Landing */
-  .landing {
-    min-height: 100dvh;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 24px; text-align: center;
-  }
-  .landing__seal {
-    width: 48px; height: 48px; border-radius: 50%;
-    border: 1px dashed var(--accent);
-    display: flex; align-items: center; justify-content: center;
-    color: var(--accent); font-size: 20px; margin-bottom: 18px;
-  }
-  .landing__title { font-family: 'IBM Plex Mono', monospace; font-size: 28px; letter-spacing: .04em; margin: 0 0 8px; }
-  .landing__sub { color: var(--text-muted); max-width: 320px; margin: 0 0 28px; line-height: 1.5; font-size: 15px; }
-  .landing__divider { display: flex; align-items: center; gap: 12px; color: var(--text-muted); font-size: 13px; margin: 22px 0; width: 100%; max-width: 280px; }
-  .landing__divider::before, .landing__divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-  .landing__join { display: flex; gap: 8px; width: 100%; max-width: 280px; }
-  .landing__error { color: var(--accent); font-size: 13px; margin-top: 10px; }
-  .landing__footnote { color: var(--text-muted); font-size: 12px; margin-top: 36px; max-width: 280px; line-height: 1.5; }
-
-  /* Shared controls */
-  .btn { font-weight: 600; font-size: 15px; border-radius: 10px; padding: 13px 20px; cursor: pointer; border: 1px solid transparent; transition: transform .15s ease, opacity .15s ease; }
-  .btn:active { transform: scale(.97); }
-  .btn--primary { background: var(--accent); color: #1c150d; border: none; width: 100%; max-width: 280px; }
-  .btn--ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
-  .btn:disabled { opacity: .4; cursor: not-allowed; }
-  .input { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 13px 14px; font-size: 15px; outline: none; flex: 1; min-width: 0; }
-  .input:focus { border-color: var(--accent); }
-  .input:disabled { opacity: .5; }
-  .input--code { font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .12em; text-align: center; }
-
-  /* Status (waiting / connecting) */
-  .status { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; text-align: center; }
-  .status__spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--accent); animation: spin .9s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .status__text { color: var(--text-muted); font-size: 14px; max-width: 280px; }
-
-  /* Code chip */
-  .code-chip { background: var(--surface); border: 1px dashed var(--accent); border-radius: 8px; padding: 8px 16px; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; color: var(--text); }
-  .code-chip span { font-family: 'IBM Plex Mono', monospace; letter-spacing: .15em; font-size: 16px; }
-  .code-chip small { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
-
-  /* Room */
-  .room { min-height: 100dvh; display: flex; flex-direction: column; }
-  .room__header { display: flex; align-items: center; justify-content: center; padding: 16px; border-bottom: 1px solid var(--border); position: relative; }
-  .room__back { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; padding: 8px; }
-  .room__messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-  .room__empty { color: var(--text-muted); text-align: center; margin-top: 40px; font-size: 14px; padding: 0 24px; }
-  .bubble { max-width: 75%; padding: 10px 14px; border-radius: 14px; font-size: 15px; line-height: 1.4; word-wrap: break-word; }
-  .bubble p { margin: 0; }
-  .bubble--mine { align-self: flex-end; background: var(--accent); color: #1c150d; border-bottom-right-radius: 4px; }
-  .bubble--other { align-self: flex-start; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-  .system-msg { align-self: center; color: var(--text-muted); font-size: 12px; margin: 4px 0; }
-  .room__compose { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); background: var(--bg); }
-  .room__compose .btn { width: auto; padding: 13px 18px; }
-
-  @media (max-width: 420px) { .landing__title { font-size: 24px; } }
-  [hidden] { display: none !important; }
+  .roster h4{display:none;}
+  .peer-chip{flex-shrink:0; margin-bottom:0;}
+  .msg-row{max-width:90%;}
+  .header .title{font-size:18px;}
+  .control-deck .btn{font-size:11px; padding:7px 9px;}
+}
 </style>
 </head>
 <body>
+<canvas id="matrixCanvas"></canvas>
+<div id="scanlines"></div>
+<div id="vignette"></div>
 
-  <main id="landing" class="landing">
-    <div class="landing__seal">✦</div>
-    <h1 class="landing__title">Anonim Mesaj</h1>
-    <p class="landing__sub">Kimlik yok, kayıt yok, sunucuda saklanan mesaj yok. Bir oda aç, kodu paylaş, doğrudan konuş.</p>
+<div class="app screen-flicker">
 
-    <button id="createBtn" class="btn btn--primary">Yeni oda oluştur</button>
+  <!-- ================= LOGIN ================= -->
+  <div id="loginScreen" class="center-stage">
+    <div class="terminal-card">
+      <div class="term-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span></div>
+      <h1 class="glitch-title">GHOSTLINE</h1>
+      <div class="subtitle">sunucusuz / izsiz / şifrelenmemiş hafıza yok.<br>tarayıcılar birbirine doğrudan bağlanır. sekme kapanınca her şey silinir.</div>
 
-    <div class="landing__divider"><span>ya da</span></div>
-
-    <form id="joinForm" class="landing__join">
-      <input id="joinInput" class="input input--code" placeholder="ODA KODU" maxlength="8" autocomplete="off" />
-      <button class="btn btn--ghost" type="submit">Katıl</button>
-    </form>
-    <p id="landingError" class="landing__error" hidden></p>
-
-    <p class="landing__footnote">Mesajlar hiçbir sunucuda tutulmaz, doğrudan iki taraf arasında gider. Bağlanmak için ikiniz de aynı anda sayfayı açık tutmalısınız.</p>
-  </main>
-
-  <main id="status" class="status" hidden>
-    <div class="status__spinner"></div>
-    <p id="statusText" class="status__text">Hazırlanıyor...</p>
-    <div id="statusCode" class="code-chip" hidden>
-      <span id="statusCodeText"></span>
-      <small>kodu kopyala</small>
-    </div>
-    <button id="statusCancel" class="btn btn--ghost">Vazgeç</button>
-  </main>
-
-  <main id="room" class="room" hidden>
-    <header class="room__header">
-      <button id="roomBack" class="room__back" aria-label="Çık">←</button>
-      <div id="roomCode" class="code-chip">
-        <span id="roomCodeText"></span>
-        <small id="roomStatusText">bağlandı</small>
+      <div class="field">
+        <span class="field-label">RUMUZ (opsiyonel)</span>
+        <input type="text" id="nickInput" placeholder="boş bırakılırsa Anon-#" maxlength="16">
       </div>
-    </header>
-    <div id="messages" class="room__messages"></div>
-    <form id="composeForm" class="room__compose">
-      <input id="composeInput" class="input" placeholder="Mesaj yaz..." maxlength="2000" autocomplete="off" />
-      <button id="sendBtn" class="btn btn--primary" type="submit">Gönder</button>
-    </form>
-  </main>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js"></script>
-  <script>
-    var PREFIX = 'anonimsohbet-';
-    var ICE = { iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:global.stun.twilio.com:3478' }
-    ]};
+      <div class="field">
+        <span class="field-label">ODA KODU</span>
+        <input type="text" id="roomInput" placeholder="örn: X7K2PQ" maxlength="10" style="text-transform:uppercase">
+      </div>
 
-    var peer = null, conn = null, myCode = '';
+      <div class="row">
+        <div class="btn primary" id="joinBtn">ODAYA KATIL ›</div>
+        <div class="btn ghost" id="createBtn">YENİ ODA AÇ</div>
+      </div>
+      <div class="login-error" id="loginError"></div>
+    </div>
+  </div>
 
-    var screens = {
-      landing: document.getElementById('landing'),
-      status: document.getElementById('status'),
-      room: document.getElementById('room')
-    };
-    function showScreen(name) {
-      for (var k in screens) screens[k].hidden = (k !== name);
+  <!-- ================= CHAT ================= -->
+  <div id="chatScreen" class="chat-shell hidden">
+    <div class="header">
+      <span class="title">GHOSTLINE</span>
+      <span class="code-pill" id="roomCodeDisplay" title="kopyalamak için tıkla">------</span>
+      <span class="online-count" id="onlineCount">1 bağlı</span>
+      <div class="spacer"></div>
+      <div class="btn ghost" id="leaveBtn" style="font-size:11px; padding:7px 10px;">ODADAN ÇIK</div>
+    </div>
+
+    <div class="roster" id="roster">
+      <h4>KANALDAKİLER</h4>
+    </div>
+
+    <div class="main" id="mainArea">
+      <div class="live-strip hidden" id="liveStrip"></div>
+    </div>
+
+    <div class="inputbar">
+      <div class="control-deck">
+        <div class="btn you" id="voiceBtn">🎙 SESLİ ODA</div>
+        <div class="btn" id="screenBtn" style="border-color:var(--alert); color:var(--alert);">🖥 CANLI YAYIN BAŞLAT</div>
+      </div>
+      <div class="compose">
+        <button class="icon-btn" id="emojiToggle" title="emoji">😀</button>
+        <label class="icon-btn" title="dosya gönder" style="cursor:pointer;">
+          📎<input type="file" id="fileInput" class="hidden">
+        </label>
+        <textarea id="chatInput" placeholder="şifreli kanala yaz..." rows="1"></textarea>
+        <button class="send-btn" id="sendBtn">➤</button>
+        <div class="emoji-panel hidden" id="emojiPanel"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+/* =========================================================
+   MATRIX RAIN BACKGROUND
+========================================================= */
+(function matrixRain(){
+  const canvas = document.getElementById('matrixCanvas');
+  const ctx = canvas.getContext('2d');
+  let w,h,cols,drops;
+  const chars = 'アイウエオカキクケコサシスセソ0123456789$#@&%ABCDEFGHIJK';
+  function resize(){
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+    cols = Math.floor(w/16);
+    drops = Array.from({length:cols}, ()=> Math.random()*h/16);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function draw(){
+    if(reduceMotion) return;
+    ctx.fillStyle = 'rgba(4,5,9,0.12)';
+    ctx.fillRect(0,0,w,h);
+    ctx.font = '14px monospace';
+    for(let i=0;i<cols;i++){
+      const text = chars[Math.floor(Math.random()*chars.length)];
+      const r = Math.random();
+      ctx.fillStyle = r > 0.96 ? '#ff2d2d' : (r > 0.90 ? '#ffffff' : '#2f8fff');
+      ctx.fillText(text, i*16, drops[i]*16);
+      if(drops[i]*16 > h && Math.random()>0.975) drops[i]=0;
+      drops[i]++;
     }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
 
-    function setStatus(text, showCode) {
-      document.getElementById('statusText').textContent = text;
-      var codeEl = document.getElementById('statusCode');
-      if (showCode) {
-        codeEl.hidden = false;
-        document.getElementById('statusCodeText').textContent = myCode;
-      } else {
-        codeEl.hidden = true;
-      }
+/* =========================================================
+   DECODE / GLITCH TEXT REVEAL (signature element)
+========================================================= */
+const DECODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*<>/\\|アイウ';
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function decodeReveal(el, text){
+  if(reduceMotion){ el.textContent = text; return; }
+  let frame = 0;
+  const total = Math.min(20, 7 + Math.floor(text.length/2));
+  function step(){
+    let out = '';
+    const revealCount = Math.floor((frame/total) * text.length);
+    for(let i=0;i<text.length;i++){
+      if(i < revealCount || text[i] === ' ' || text[i] === '\n') out += text[i];
+      else out += DECODE_CHARS[Math.floor(Math.random()*DECODE_CHARS.length)];
     }
+    el.textContent = out;
+    frame++;
+    if(frame <= total) requestAnimationFrame(step); else el.textContent = text;
+  }
+  step();
+}
 
-    function showError(msg) {
-      var el = document.getElementById('landingError');
-      el.textContent = msg;
-      el.hidden = false;
+/* =========================================================
+   STATE
+========================================================= */
+const MAX_SLOTS = 8;
+let myPeer = null, mySlot = null, myNick = 'Anon', roomCode = '';
+let connections = {};       // slot -> DataConnection
+let voiceCalls = {};        // slot -> MediaConnection (mic, two-way)
+let outScreenCalls = {};    // slot -> MediaConnection (we are broadcasting TO this slot)
+let viewingScreens = {};    // slot -> MediaConnection (we are watching this slot's screen)
+let knownNicks = {};
+let seenMsgIds = new Set();
+let inVoice = false, isSharingScreen = false;
+let micStream = null, processedStream = null, audioCtx = null;
+let screenStream = null;
+let meshTimer = null;
+
+function slotId(slot){ return roomCode + '__' + slot; }
+function parseSlot(peerId){ const parts = peerId.split('__'); return parseInt(parts[parts.length-1], 10); }
+function nickFor(slot){ return (knownNicks[slot] ? knownNicks[slot] : 'Anon-' + slot); }
+
+/* =========================================================
+   LOGIN SCREEN LOGIC
+========================================================= */
+function genCode(){
+  const alphabet = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+  return Array.from({length:6}, ()=> alphabet[Math.floor(Math.random()*alphabet.length)]).join('');
+}
+function sanitizeCode(v){ return v.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10); }
+
+document.getElementById('createBtn').addEventListener('click', ()=>{
+  document.getElementById('roomInput').value = genCode();
+});
+document.getElementById('roomInput').addEventListener('input', (e)=>{
+  e.target.value = sanitizeCode(e.target.value);
+});
+document.getElementById('joinBtn').addEventListener('click', startJoin);
+document.getElementById('roomInput').addEventListener('keydown', e=>{ if(e.key==='Enter') startJoin(); });
+
+function startJoin(){
+  const code = sanitizeCode(document.getElementById('roomInput').value);
+  const nick = document.getElementById('nickInput').value.trim().slice(0,16);
+  const err = document.getElementById('loginError');
+  err.textContent = '';
+  if(!code){ err.textContent = 'oda kodu gerekli. yeni oda açabilir veya birinden kod isteyebilirsin.'; return; }
+  roomCode = code;
+  myNick = nick;
+  document.getElementById('joinBtn').textContent = 'BAĞLANIYOR...';
+  tryClaimSlot(1);
+}
+
+function tryClaimSlot(slot){
+  if(slot > MAX_SLOTS){
+    document.getElementById('loginError').textContent = 'bu oda dolu (' + MAX_SLOTS + ' kişi). farklı bir kod dene.';
+    document.getElementById('joinBtn').textContent = 'ODAYA KATIL ›';
+    return;
+  }
+  const peer = new Peer(slotId(slot), { debug: 0 });
+  let settled = false;
+  peer.on('open', ()=>{
+    if(settled) return; settled = true;
+    mySlot = slot; myPeer = peer;
+    onJoined();
+  });
+  peer.on('error', (e)=>{
+    if(settled) return;
+    if(e.type === 'unavailable-id'){
+      settled = true;
+      try{ peer.destroy(); }catch(_){}
+      tryClaimSlot(slot+1);
+    } else if(e.type === 'browser-incompatible' || e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error'){
+      settled = true;
+      document.getElementById('loginError').textContent = 'sinyal sunucusuna ulaşılamadı. internetini kontrol et ve tekrar dene.';
+      document.getElementById('joinBtn').textContent = 'ODAYA KATIL ›';
     }
+  });
+}
 
-    function copyText(text) {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).catch(function () { fallbackCopy(text); });
-      } else {
-        fallbackCopy(text);
-      }
-    }
-    function fallbackCopy(text) {
-      var ta = document.createElement('textarea');
-      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); } catch (e) {}
-      document.body.removeChild(ta);
-    }
-
-    function generateCode() {
-      var chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', code = '';
-      for (var i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
-      return code;
-    }
-
-    function teardownPeer() {
-      if (conn) { try { conn.close(); } catch (e) {} conn = null; }
-      if (peer) { try { peer.destroy(); } catch (e) {} peer = null; }
-    }
-
-    function goLanding() {
-      if (conn && conn.open) { try { conn.send({ type: 'leave' }); } catch (e) {} }
-      teardownPeer();
-      document.getElementById('joinInput').value = '';
-      document.getElementById('landingError').hidden = true;
-      document.getElementById('messages').innerHTML = '';
-      document.getElementById('composeInput').disabled = false;
-      document.getElementById('sendBtn').disabled = false;
-      document.getElementById('roomStatusText').textContent = 'bağlandı';
-      showScreen('landing');
-    }
-
-    function addMessage(text, mine) {
-      var wrap = document.getElementById('messages');
-      var empty = wrap.querySelector('.room__empty');
-      if (empty) empty.remove();
-      var div = document.createElement('div');
-      div.className = 'bubble ' + (mine ? 'bubble--mine' : 'bubble--other');
-      var p = document.createElement('p');
-      p.textContent = text;
-      div.appendChild(p);
-      wrap.appendChild(div);
-      wrap.scrollTop = wrap.scrollHeight;
-    }
-
-    function addSystemMessage(text) {
-      var wrap = document.getElementById('messages');
-      var div = document.createElement('div');
-      div.className = 'system-msg';
-      div.textContent = text;
-      wrap.appendChild(div);
-      wrap.scrollTop = wrap.scrollHeight;
-    }
-
-    function enterRoom(code) {
-      myCode = code;
-      document.getElementById('roomCodeText').textContent = code;
-      document.getElementById('roomStatusText').textContent = 'bağlandı';
-      document.getElementById('messages').innerHTML = '<p class="room__empty">Henüz mesaj yok. İlk mesajı sen yaz.</p>';
-      showScreen('room');
-    }
-
-    function wireConnection(connection, codeForDisplay) {
-      conn = connection;
-      conn.on('open', function () { enterRoom(codeForDisplay); });
-      conn.on('data', function (data) {
-        if (!data || typeof data !== 'object') return;
-        if (data.type === 'msg' && typeof data.text === 'string') {
-          addMessage(data.text, false);
-        } else if (data.type === 'leave') {
-          addSystemMessage('Karşı taraf odadan çıktı.');
-          document.getElementById('roomStatusText').textContent = 'ayrıldı';
-        }
-      });
-      conn.on('close', function () {
-        addSystemMessage('Bağlantı koptu.');
-        document.getElementById('roomStatusText').textContent = 'koptu';
-        document.getElementById('composeInput').disabled = true;
-        document.getElementById('sendBtn').disabled = true;
-      });
-    }
-
-    // Oda oluştur (host)
-    document.getElementById('createBtn').addEventListener('click', function () {
-      if (typeof Peer === 'undefined') {
-        showScreen('status');
-        setStatus('Bağlantı kütüphanesi yüklenemedi. Sayfayı yenile ve tekrar dene.', false);
-        return;
-      }
-      var code = generateCode();
-      teardownPeer();
-      showScreen('status');
-      setStatus('Oda hazırlanıyor...', false);
-
-      peer = new Peer(PREFIX + code, { debug: 1, config: ICE });
-
-      var openTimer = setTimeout(function () {
-        setStatus('Bağlantı sunucusuna ulaşılamıyor. İnternetini kontrol et ve tekrar dene.', false);
-      }, 10000);
-
-      peer.on('open', function () {
-        clearTimeout(openTimer);
-        setStatus('Karşı taraf bekleniyor', true);
-      });
-      peer.on('connection', function (connection) { wireConnection(connection, code); });
-      peer.on('error', function (err) {
-        clearTimeout(openTimer);
-        if (err && err.type === 'unavailable-id') {
-          setStatus('Kod meşgul, yeni kod deneniyor...', false);
-          teardownPeer();
-          setTimeout(function () { document.getElementById('createBtn').click(); }, 400);
-        } else {
-          setStatus('Bağlantı kurulamadı (' + (err && err.type ? err.type : 'hata') + '). Vazgeç ve tekrar dene.', false);
-        }
-      });
-    });
-
-    document.getElementById('statusCode').addEventListener('click', function () { copyText(myCode); });
-    document.getElementById('roomCode').addEventListener('click', function () { copyText(myCode); });
-    document.getElementById('statusCancel').addEventListener('click', goLanding);
-    document.getElementById('roomBack').addEventListener('click', goLanding);
-
-    // Katıl
-    document.getElementById('joinForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      var raw = document.getElementById('joinInput').value.trim().toUpperCase();
-      if (raw.length < 4) { showError('Kod en az 4 karakter olmalı.'); return; }
-      if (typeof Peer === 'undefined') { showError('Bağlantı kütüphanesi yüklenemedi. Sayfayı yenile.'); return; }
-      document.getElementById('landingError').hidden = true;
-
-      teardownPeer();
-      showScreen('status');
-      setStatus('Bağlanılıyor: ' + raw, false);
-
-      peer = new Peer(undefined, { debug: 1, config: ICE });
-
-      var peerOpenTimer = setTimeout(function () {
-        setStatus('Bağlantı sunucusuna ulaşılamıyor. İnternetini kontrol et ve tekrar dene.', false);
-      }, 10000);
-
-      peer.on('open', function () {
-        clearTimeout(peerOpenTimer);
-        var connection = peer.connect(PREFIX + raw, { reliable: true });
-        var settled = false;
-
-        var failTimer = setTimeout(function () {
-          if (!settled) { settled = true; setStatus('Bu kodla bir oda bulunamadı. Kodu kontrol et.', false); }
-        }, 8000);
-
-        connection.on('open', function () {
-          settled = true; clearTimeout(failTimer);
-          wireConnection(connection, raw);
-        });
-        connection.on('error', function () {
-          if (!settled) { settled = true; clearTimeout(failTimer); setStatus('Bu kodla bir oda bulunamadı. Kodu kontrol et.', false); }
-        });
-      });
-
-      peer.on('error', function (err) {
-        clearTimeout(peerOpenTimer);
-        setStatus('Bağlantı kurulamadı (' + (err && err.type ? err.type : 'hata') + '). Vazgeç ve tekrar dene.', false);
-      });
-    });
-
-    // Mesaj gönder
-    document.getElementById('composeForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      var input = document.getElementById('composeInput');
-      var text = input.value.trim();
-      if (!text || !conn || !conn.open) return;
-      conn.send({ type: 'msg', text: text });
-      addMessage(text, true);
-      input.value = '';
-    });
-
-    window.addEventListener('pagehide', teardownPeer);
-  </script>
-</body>
-</html>
+/* =========================================================
+   ENTER CHAT SCREEN
+===================================================
